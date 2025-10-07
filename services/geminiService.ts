@@ -11,7 +11,7 @@ const getAiClient = (): GoogleGenAI => {
   if (!isAiAvailable()) {
     throw new Error("Gemini API key is not configured.");
   }
-  return new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+  return new GoogleGenAI({ apiKey: "AIzaSyAf6a00_m7aO0iWarM_lG7RYy-pKtqlty4"});
 };
 
 export const generateComponentAnalysis = async (requirements: SystemRequirements): Promise<string> => {
