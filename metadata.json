@@ -1,0 +1,5 @@
+{
+  "name": "SolarGenius PWA",
+  "description": "A client-side PWA for solar panel installation companies to accelerate custom system design and material ordering, with generative AI powering all text and image generation.",
+  "requestFramePermissions": []
+}
