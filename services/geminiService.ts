@@ -1,17 +1,31 @@
 import { GoogleGenAI, Type, GenerateContentResponse, Part } from "@google/genai";
 import { SystemRequirements, BillOfMaterialItem, SitePhoto } from './types';
 
+const getApiKey = (): string | null => {
+    // Prioritize user-provided key from local storage
+    const userApiKey = localStorage.getItem('geminiApiKey');
+    if (userApiKey && userApiKey.trim() !== '') {
+        return userApiKey;
+    }
+    // Fallback to environment variable if available
+    const envApiKey = process.env.API_KEY;
+    if (envApiKey && envApiKey.trim() !== '') {
+        return envApiKey;
+    }
+    return null;
+};
+
 export const isAiAvailable = (): boolean => {
-  // In a real app, process.env.API_KEY would be set in the build environment.
-  // For this client-side example, we check if it's a non-empty string.
-  return typeof process.env.API_KEY === 'string' && process.env.API_KEY.length > 0;
+  const apiKey = getApiKey();
+  return typeof apiKey === 'string' && apiKey.length > 0;
 };
 
 const getAiClient = (): GoogleGenAI => {
-  if (!isAiAvailable()) {
-    throw new Error("Gemini API key is not configured.");
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    throw new Error("Gemini API key is not configured. Please add one in the app.");
   }
-  return new GoogleGenAI({ apiKey: "AIzaSyAf6a00_m7aO0iWarM_lG7RYy-pKtqlty4"});
+  return new GoogleGenAI({ apiKey });
 };
 
 export const generateComponentAnalysis = async (requirements: SystemRequirements): Promise<string> => {

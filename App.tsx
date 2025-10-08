@@ -123,6 +123,8 @@ const StepCard: React.FC<StepCardProps> = ({ title, description, status, onGener
 
 const App: React.FC = () => {
   const [isAiOnline, setIsAiOnline] = useState<boolean>(false);
+  const [userApiKey, setUserApiKey] = useState<string>('');
+  const [isInstructionsVisible, setIsInstructionsVisible] = useState<boolean>(false);
   
   // Inputs
   const [sitePhotos, setSitePhotos] = useState<SitePhoto[]>([]);
@@ -147,6 +149,10 @@ const App: React.FC = () => {
   const [copied, setCopied] = useState<boolean>(false);
 
   useEffect(() => {
+    const savedKey = localStorage.getItem('geminiApiKey');
+    if (savedKey) {
+        setUserApiKey(savedKey);
+    }
     setIsAiOnline(isAiAvailable());
   }, []);
 
@@ -207,6 +213,25 @@ const App: React.FC = () => {
     });
   };
 
+  const handleApiKeyChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setUserApiKey(e.target.value);
+  };
+
+  const handleSaveApiKey = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (userApiKey.trim()) {
+      localStorage.setItem('geminiApiKey', userApiKey);
+      setIsAiOnline(true);
+      alert('API Key saved and activated!');
+    } else {
+      localStorage.removeItem('geminiApiKey');
+      // Re-check AI availability to see if we can fallback to an environment key
+      setIsAiOnline(isAiAvailable());
+      setUserApiKey('');
+      alert('Your custom API Key has been removed. The app will use the default key if available.');
+    }
+  };
+
   const renderBillOfMaterialsTable = () => (
     <div className="text-sm font-mono">
       <table className="w-full text-left">
@@ -251,13 +276,52 @@ const App: React.FC = () => {
       {!isAiOnline && (
         <div className="bg-yellow-900 border border-yellow-400 text-yellow-200 px-4 py-3 rounded-lg relative mb-6" role="alert">
           <strong className="font-bold">AI Features Unavailable.</strong>
-          <span className="block sm:inline"> Gemini API key is not configured. You can still use the app for manual data entry.</span>
+          <span className="block sm:inline"> Please add your Gemini API key below to enable AI features.</span>
         </div>
       )}
 
       <section className="my-8 p-6 bg-slate-light rounded-lg border border-slate-border">
         <h2 className="text-xl font-bold text-center mb-6 text-gray-200">Project Workflow</h2>
         <WorkflowDiagram successStates={success} inputComplete={sitePhotos.length > 0} />
+      </section>
+
+      <section className="mb-8 p-6 bg-slate-light rounded-lg border border-slate-border">
+        <h2 className="text-xl font-bold mb-4 text-gray-200">Configure Gemini API Key</h2>
+        <form onSubmit={handleSaveApiKey} className="flex items-center space-x-2">
+            <input
+                type="password"
+                value={userApiKey}
+                onChange={handleApiKeyChange}
+                placeholder="Enter your Gemini API key..."
+                className="flex-grow bg-slate-gray p-2 rounded-md border border-slate-border focus:ring-2 focus:ring-lime-green focus:outline-none"
+                aria-label="Gemini API Key"
+            />
+            <button type="submit" className="bg-lime-green text-slate-gray font-bold py-2 px-4 rounded-md transition-colors hover:bg-white disabled:bg-gray-500">
+                Save Key
+            </button>
+        </form>
+        <div className="mt-4">
+            <button
+                onClick={() => setIsInstructionsVisible(!isInstructionsVisible)}
+                className="flex items-center justify-between w-full text-left font-bold text-lime-green py-2"
+                aria-expanded={isInstructionsVisible}
+            >
+                <span>How to get an API Key?</span>
+                <svg className={`w-5 h-5 transition-transform ${isInstructionsVisible ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+            </button>
+            {isInstructionsVisible && (
+                <div className="mt-2 p-4 bg-slate-gray rounded-md border border-slate-border text-sm">
+                    <ol className="list-decimal list-inside space-y-2">
+                        <li>Go to <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="underline hover:text-lime-green">Google AI Studio</a>.</li>
+                        <li>Sign in with your Google account.</li>
+                        <li>Click "<strong>Create API key</strong>" to get your key.</li>
+                        <li>Copy the generated key and paste it into the field above, then click "Save Key".</li>
+                    </ol>
+                </div>
+            )}
+        </div>
       </section>
 
       <main className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -299,7 +363,7 @@ const App: React.FC = () => {
         <div className="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-6">
           <StepCard title="1. Component Compatibility" description="AI analyzes requirements for compatible hardware." status={getStatus('analysis')} onGenerate={() => executeAiStep('analysis', () => generateComponentAnalysis(requirements), setCompatibleComponents)} isAiOnline={isAiOnline} isButtonDisabled={!requirements.desiredKw}>
             {errors.analysis && <p className="text-red-400 text-sm">{errors.analysis}</p>}
-            <textarea readOnly={isAiOnline} value={compatibleComponents} onChange={(e) => setCompatibleComponents(e.target.value)} className="w-full h-full bg-slate-gray p-2 rounded-md border border-slate-border font-mono text-sm focus:ring-2 focus:ring-lime-green focus:outline-none" placeholder={isAiOnline ? "Generated component list will appear here..." : "Manually enter component list..."}></textarea>
+            <textarea readOnly={!isAiOnline} value={compatibleComponents} onChange={(e) => setCompatibleComponents(e.target.value)} className="w-full h-full bg-slate-gray p-2 rounded-md border border-slate-border font-mono text-sm focus:ring-2 focus:ring-lime-green focus:outline-none" placeholder={isAiOnline ? "Generated component list will appear here..." : "Manually enter component list..."}></textarea>
           </StepCard>
 
           <StepCard title="2. 3D Renderings" description="AI generates visualizations on site photos." status={getStatus('renderings')} onGenerate={() => executeAiStep('renderings', () => generateRenderings(compatibleComponents, sitePhotos), setGeneratedRenderings)} isAiOnline={isAiOnline} isButtonDisabled={!compatibleComponents || sitePhotos.length === 0}>
@@ -312,15 +376,15 @@ const App: React.FC = () => {
 
           <StepCard title="3. Bill of Materials" description="AI creates an itemized materials list." status={getStatus('billOfMaterials')} onGenerate={() => executeAiStep('billOfMaterials', () => generateBillOfMaterials(compatibleComponents, sitePhotos), setBillOfMaterials)} isAiOnline={isAiOnline} isButtonDisabled={!success.renderings}>
             {errors.billOfMaterials && <p className="text-red-400 text-sm">{errors.billOfMaterials}</p>}
-            {isAiOnline ? (billOfMaterials.length > 0 && renderBillOfMaterialsTable()) : 
+            {isAiOnline ? (billOfMaterials.length > 0 ? renderBillOfMaterialsTable() : <p className="text-gray-400 text-sm">Generated bill of materials will appear here.</p>) : 
                 <textarea onChange={handleManualBomChange} defaultValue={JSON.stringify(billOfMaterials, null, 2)} className="w-full h-full bg-slate-gray p-2 rounded-md border border-slate-border font-mono text-sm focus:ring-2 focus:ring-lime-green focus:outline-none" placeholder="Manually paste Bill of Materials JSON here..."></textarea>}
-            {!isAiOnline && <p className="text-xs text-gray-400 mt-2">Enter a valid JSON array of material items.</p>}
+            {!isAiOnline && billOfMaterials.length === 0 && <p className="text-xs text-gray-400 mt-2">Enter a valid JSON array of material items.</p>}
           </StepCard>
 
           <StepCard title="4. Order Sheet" description="AI compiles a final purchase order." status={getStatus('orderSheet')} onGenerate={() => executeAiStep('orderSheet', () => generateOrderSheet(billOfMaterials), setOrderSheet)} isAiOnline={isAiOnline} isButtonDisabled={billOfMaterials.length === 0}>
             {errors.orderSheet && <p className="text-red-400 text-sm">{errors.orderSheet}</p>}
             <div className="relative h-full">
-                <textarea readOnly={isAiOnline} value={orderSheet} onChange={(e) => setOrderSheet(e.target.value)} className="w-full h-full bg-slate-gray p-2 rounded-md border border-slate-border font-mono text-sm focus:ring-2 focus:ring-lime-green focus:outline-none" placeholder={isAiOnline ? "Generated order sheet will appear here..." : "Manually write order sheet..."}></textarea>
+                <textarea readOnly={!isAiOnline} value={orderSheet} onChange={(e) => setOrderSheet(e.target.value)} className="w-full h-full bg-slate-gray p-2 rounded-md border border-slate-border font-mono text-sm focus:ring-2 focus:ring-lime-green focus:outline-none" placeholder={isAiOnline ? "Generated order sheet will appear here..." : "Manually write order sheet..."}></textarea>
                 {orderSheet && <button onClick={handleCopyOrderSheet} className="absolute top-2 right-2 bg-teal-selected text-white px-2 py-1 text-xs rounded hover:bg-lime-green hover:text-slate-gray">{copied ? 'Copied!' : 'Copy'}</button>}
             </div>
           </StepCard>
